@@ -2163,7 +2163,7 @@ and this option only controls what face is used.")
                                ((string-match re it) (concat "refs/remotes/" it))
                                (t                    (concat "refs/" it)))
                          (split-string
-                          (replace-regexp-in-string "tag: " "refs/tags/" string)
+                          (string-replace "tag: " "refs/tags/" string)
                           regexp t))))
         (setq names (split-string string regexp t)))
       (let (state head upstream tags branches remotes other combined)
