@@ -3407,8 +3407,7 @@ last (visual) lines of the region."
 
 (defun magit-diff-hunk-region-header (section)
   (let ((patch (magit-diff-hunk-region-patch section)))
-    (string-match "\n" patch)
-    (substring patch 0 (1- (match-end 0)))))
+    (substring patch 0 (string-search "\n" patch))))
 
 (defun magit-diff-hunk-region-patch (section &optional args)
   (let ((op (if (member "--reverse" args) "+" "-"))
