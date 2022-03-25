@@ -169,10 +169,16 @@ and that is killed when exiting Ediff."
     (setq kill (nreverse kill))
     `(magit-with-toplevel
        (let ((conf (current-window-configuration))
+             (file ,file)
+             (buffer nil)
              ,@get)
          (ediff-buffers-internal
           ,@make
           (list (lambda ()
+                  (when file
+                    (when (setq buffer (find-buffer-visiting file))
+                      (save-buffer buffer)
+                      (kill-buffer buffer)))
                   (setq-local
                    ediff-quit-hook
                    (list ,@(and quit (list quit))
@@ -196,27 +202,35 @@ In the rare event that you want to manually resolve all
 conflicts, including those already resolved by Git, use
 `ediff-merge-revisions-with-ancestor'."
   (interactive (list (magit-read-unmerged-file)))
-  (magit-with-toplevel
-    (with-current-buffer (find-file-noselect file)
-      (smerge-ediff)
-      (setq-local
-       ediff-quit-hook
-       (lambda ()
-         (let ((bufC ediff-buffer-C)
-               (bufS smerge-ediff-buf))
-           (with-current-buffer bufS
-             (when (yes-or-no-p (format "Conflict resolution finished; save %s? "
-                                        buffer-file-name))
-               (erase-buffer)
-               (insert-buffer-substring bufC)
-               (save-buffer))))
-         (when (buffer-live-p ediff-buffer-A) (kill-buffer ediff-buffer-A))
-         (when (buffer-live-p ediff-buffer-B) (kill-buffer ediff-buffer-B))
-         (when (buffer-live-p ediff-buffer-C) (kill-buffer ediff-buffer-C))
-         (when (buffer-live-p ediff-ancestor-buffer)
-           (kill-buffer ediff-ancestor-buffer))
-         (let ((magit-ediff-previous-winconf smerge-ediff-windows))
-           (run-hooks 'magit-ediff-quit-hook)))))))
+  (let* ((revA  (magit-commit-p "HEAD"))
+         (revB  (magit-commit-p "MERGE_HEAD"))
+         (revC  (magit-commit-p (magit-git-string "merge-base" revA revB)))
+         (fileA file)
+         (fileB file)
+         (fileC file))
+    ;; (message "2 A %s:%s" revA fileA)
+    ;; (message "3 B %s:%s" revB fileB)
+    ;; (message "1 C %s:%s" revC fileC)
+    ;; (message "  M %s" file)
+    ;; (when-let ((buf (get-file-buffer file)))
+    ;;   (with-current-buffer buf
+    ;;     (save-buffer)
+    ;;     (kill-buffer)))
+    (magit-ediff-buffers
+        (lambda ()
+          (when (and (buffer-live-p ediff-buffer-C)
+                     (buffer-modified-p ediff-buffer-C))
+            (with-current-buffer ediff-buffer-C
+              ;; (when (y-or-n-p (format "Save file %s? " buffer-file-name))
+              (save-buffer)))
+          (magit-stage-file file))
+        file
+      ((magit-get-revision-buffer revA fileA)
+       (magit-find-file-noselect  revA fileA))
+      ((magit-get-revision-buffer revB fileB)
+       (magit-find-file-noselect  revB fileB))
+      ((magit-get-revision-buffer revC fileC)
+       (magit-find-file-noselect  revC fileC)))))
 
 ;;;###autoload
 (defun magit-ediff-stage (file)
