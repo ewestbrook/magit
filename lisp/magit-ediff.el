@@ -160,8 +160,15 @@ and that is killed when exiting Ediff."
                  ,m)
               make)
         (push `(and (not ,b)
-                    (ediff-kill-buffer-carefully
-                     ,(intern (format "ediff-buffer-%c" char))))
+                    (let ((var ,(intern (format "ediff-buffer-%c" char))))
+                      (message "--- kill ediff-buffer-%c: %s" ,char var)
+                      ;; === 2 A 4cc981463c587b4cc36d5da94646463caeaf14bf:file
+                      ;; === 3 B 6afa92d9fcf1b483335e5f5eb5784d85414c469e:file
+                      ;; === 1 C f2bfe2e8522b19acc6bc8ad8dfa3607658b39d35:file
+                      ;; --- kill ediff-buffer-A: file.~4cc981463c587b4cc36d5da94646463caeaf14bf~
+                      ;; --- kill ediff-buffer-B: file.~6afa92d9fcf1b483335e5f5eb5784d85414c469e~
+                      ;; --- kill ediff-buffer-C: file
+                      (ediff-kill-buffer-carefully var)))
               kill))
       (cl-incf char))
     (setq get  (nreverse get))
@@ -178,7 +185,21 @@ and that is killed when exiting Ediff."
                   (when file
                     (when (setq buffer (find-buffer-visiting file))
                       (save-buffer buffer)
-                      (kill-buffer buffer)))
+                      (kill-buffer buffer))
+                    (rename-file file (concat file ".ORIG"))
+                    ;; Do not use `ediff-do-merge' because it restores
+                    ;; conflicts that have already been resolved.  Note
+                    ;; that at this point `ediff-buffer-C' no longer
+                    ;; refers to the Ancestor buffer but the "merge
+                    ;; result" buffer (see (if ediff-merge-job ...)
+                    ;; in `ediff-setup'.
+                    (ediff-with-current-buffer ediff-buffer-C
+                      (erase-buffer)
+                      (insert-file-contents (concat file ".ORIG")))
+                    (setq-local ediff-quit-merge-hook
+                                (list (apply-partially
+                                       #'ediff-maybe-save-and-delete-merge
+                                       'do-not-delete-merge))))
                   (setq-local
                    ediff-quit-hook
                    (list ,@(and quit (list quit))
@@ -208,9 +229,9 @@ conflicts, including those already resolved by Git, use
          (fileA file)
          (fileB file)
          (fileC file))
-    ;; (message "2 A %s:%s" revA fileA)
-    ;; (message "3 B %s:%s" revB fileB)
-    ;; (message "1 C %s:%s" revC fileC)
+    (message "=== 2 A %s:%s" revA fileA)
+    (message "=== 3 B %s:%s" revB fileB)
+    (message "=== 1 C %s:%s" revC fileC)
     ;; (message "  M %s" file)
     ;; (when-let ((buf (get-file-buffer file)))
     ;;   (with-current-buffer buf
