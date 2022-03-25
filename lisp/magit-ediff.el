@@ -129,10 +129,10 @@ recommend you do not further complicate that by enabling this.")
 (defmacro magit-ediff-buffers (quit &rest spec)
   (declare (indent 1))
   (let ((fn (if (= (length spec) 3) 'ediff-buffers3 'ediff-buffers))
-        (char ?@)
+        (char ?A)
         get make kill)
     (pcase-dolist (`(,g ,m) spec)
-      (let ((b (intern (format "buf%c" (cl-incf char)))))
+      (let ((b (intern (format "buf%c" char))))
         (push `(,b ,g) get)
         (push `(if ,b
                    (if magit-ediff-use-indirect-buffers
@@ -143,10 +143,11 @@ recommend you do not further complicate that by enabling this.")
                      ,b)
                  ,m)
               make)
-        (push `(unless ,b
-                 (ediff-kill-buffer-carefully
-                  ,(intern (format "ediff-buffer-%c" char))))
-              kill)))
+        (push `(and (not ,b)
+                    (ediff-kill-buffer-carefully
+                     ,(intern (format "ediff-buffer-%c" char))))
+              kill))
+      (cl-incf char))
     (setq get  (nreverse get))
     (setq make (nreverse make))
     (setq kill (nreverse kill))
