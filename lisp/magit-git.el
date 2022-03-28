@@ -2119,9 +2119,10 @@ Return a list of two integers: (A>B B>A)."
                     (if rev (concat rev "^{commit}") "HEAD") "--"))
 
 (defun magit-format-rev-summary (rev)
-  (--when-let (magit-rev-format "%h %s" rev)
-    (magit--put-face 0 (string-match " " it) 'magit-hash it)
-    it))
+  (and-let* ((str (magit-rev-format "%h %s" rev)))
+    ;; an "internal" side-effect
+    (magit--put-face 0 (string-match " " str) 'magit-hash str)
+    str))
 
 (defvar magit-ref-namespaces
   '(("\\`HEAD\\'"                  . magit-head)
@@ -2390,7 +2391,7 @@ and this option only controls what face is used.")
   (magit-read-range
    prompt
    (or (--when-let (magit-region-values '(commit branch) t)
-         (deactivate-mark)
+         (deactivate-mark) ; an "external" side-effect
          (concat (car (last it)) ".." (car it)))
        (magit-branch-or-commit-at-point)
        secondary-default
