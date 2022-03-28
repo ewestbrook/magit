@@ -172,7 +172,7 @@
          (default  (oref obj default))
          (fallback (oref obj fallback))
          (fallback (and fallback
-                        (when-let ((val (magit-get fallback)))
+                        (and-let* ((val (magit-get fallback)))
                           (concat fallback ":" val)))))
     (if (not globalp)
         (setq value (magit-git-string "config" "--local"  variable))
